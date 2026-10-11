@@ -1,0 +1,39 @@
+namespace: adeeb
+backend:
+  replicas: 1
+  image:
+    repository: ghcr.io/adeeb-aljerf/devops-course/backend
+    tag: latest
+imagePullSecrets: ghcr-pull-secret
+
+
+
+frontend:
+ env: 
+   - name: BACKEND_URL
+     value: "http://backend-service:80"
+   - name: API_URL
+     value: "https://adeeb-kubernetes.infra-x.cloud"
+
+
+grafana:
+  enabled: true
+
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+  
+    path: /
+    pathType: Prefix
+
+    hosts:
+      - adeeb-grafana.infra-x.cloud
+
+
+    tls:  
+     - secretName: adeeb-grafana-tls
+       hosts:
+         - adeeb-grafana.infra-x.cloud
+
+         
+    

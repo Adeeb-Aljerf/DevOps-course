@@ -1,0 +1,199 @@
+---
+# Source: adeeb-chart/templates/backend-secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backend-secrets
+  namespace: adeeb
+type: Opaque
+stringData:
+  ADMIN_DEFAULT_PASSWORD: "yIG8wsTGE9wLcAdipSFO"
+  JWT_SECRET: "CHANGE_ME_very_long_secret_at_least_32_chars"
+---
+# Source: adeeb-chart/templates/ghcr-secret.yaml
+apiVersion: v1
+data:
+  .dockerconfigjson: eyJhdXRocyI6eyJnaGNyLmlvIjp7InVzZXJuYW1lIjoiYWRlZWItYWxqZXJmIiwicGFzc3dvcmQiOiJnaHBfRDFobW15YWYwaWpvR29XYlY1bjhhc0ZrUTBHSHJoMTVZd1R6IiwiYXV0aCI6IllXUmxaV0l0WVd4cVpYSm1PbWRvY0Y5RU1XaHRiWGxoWmpCcGFtOUhiMWRpVmpWdU9HRnpSbXRSTUVkSWNtZ3hOVmwzVkhvPSJ9fX0=
+kind: Secret
+metadata:
+  creationTimestamp: "2026-09-24T18:30:12Z"
+  name: ghcr-pull-secret
+  namespace: adeeb
+  resourceVersion: "894377506"
+  uid: ea2712fa-b1de-4a02-8030-31d9ecd320ad
+type: kubernetes.io/dockerconfigjson
+
+---
+# Source: adeeb-chart/templates/backend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: adeeb
+  labels:
+    app: backend
+spec:
+  selector:
+    app: backend 
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP    
+
+---
+# Source: adeeb-chart/templates/frontend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: adeeb
+  labels:
+    app: frontend
+spec:
+  selector:
+    app: frontend 
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP    
+
+---
+# Source: adeeb-chart/templates/backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: adeeb
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+      - name: backend
+        image: ghcr.io/adeeb-aljerf/backend:latest
+        imagePullPolicy: Always
+        env: 
+          - name: MONGODB_URI 
+            value: "mongodb://praxis-form-mongodb.praxis.svc.cluster.local:27017/adeeb-praxis"
+          - name : JWT_EXP_MINUTES 
+            value : "120"
+          - name : JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: backend-secrets
+                key: JWT_SECRET
+          - name : ADMIN_DEFAULT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: backend-secrets
+                key: ADMIN_DEFAULT_PASSWORD
+        ports:
+        - containerPort: 8080
+
+
+
+---
+# Source: adeeb-chart/templates/frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: adeeb
+  labels:
+    app: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+      - name: frontend
+        image: ghcr.io/adeeb-aljerf/frontend:v1  
+        imagePullPolicy: Always 
+        env: 
+          - name: BACKEND_URL
+            value: "http://backend-service:80"
+          - name: API_URL
+            value: "https://adeeb-kubernetes.infra-x.cloud"
+        ports:
+        - containerPort: 80
+
+---
+# Source: adeeb-chart/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  name: adeeb-form-ingress
+  namespace: adeeb
+
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: adeeb-kubernetes.infra-x.cloud
+    http:
+      paths:
+      - backend: 
+          service:
+            name: frontend-service
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+      - backend: 
+          service:
+            name: backend-service
+            port:
+              number: 80
+        path: /api
+        pathType: Prefix
+      - backend: 
+          service:
+            name: backend-service
+            port:
+              number: 80
+        path: /actuator
+        pathType: Prefix
+  tls:
+  - hosts:
+    - adeeb-kubernetes.infra-x.cloud
+    secretName: adeeb-form-tls
+---
+# Source: adeeb-chart/templates/cert.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: adeeb-form-tls
+  namespace: adeeb
+spec:
+  dnsNames:
+   - adeeb-kubernetes.infra-x.cloud
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: praxis-form-letsencrypt-prod
+  secretName: adeeb-form-tls
+  usages:
+  - digital signature
+  - key encipherment

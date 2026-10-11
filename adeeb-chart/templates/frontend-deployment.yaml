@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: adeeb
+  labels:
+    app: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+      - name: frontend
+        image: ghcr.io/adeeb-aljerf/frontend:v1  
+        imagePullPolicy: Always 
+        env: 
+          {{- range .Values.frontend.env }}
+          - name: {{ .name }}
+            value: {{ .value }}
+          {{- end }}
+        ports:
+        - containerPort: 80
