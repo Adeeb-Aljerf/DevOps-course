@@ -1,6 +1,6 @@
 namespace: adeeb
 backend:
-  replicas: 1
+  replicas: 2
   image:
     repository: ghcr.io/adeeb-aljerf/devops-course/backend
     tag: latest
