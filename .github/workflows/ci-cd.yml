@@ -193,9 +193,11 @@ jobs:
     env:
       NAMESPACE: adeeb
     steps:
+    
+      - uses: actions/checkout@v4
+      
       - name: Set lowercase repo name
         run: echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-      - uses: actions/checkout@v4
       - name: setup helm 
         uses: azure/setup-helm@v4
       - name: setup kubconfig
