@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: adeeb
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+      - name: backend
+        image: ghcr.io/adeeb-aljerf/backend:v1  
+        imagePullPolicy: Always 
+        env: 
+          - name: MONGODB_URI 
+            value: "mongodb://praxis-form-mongodb.praxis.svc.cluster.local:27017/adeeb-praxis"
+          - name : JWT_EXP_MINUTES 
+            value : "120"
+          - name : JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: backend-secrets
+                key: JWT_SECRET
+          - name : ADMIN_DEFAULT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: backend-secrets
+                key: ADMIN_DEFAULT_PASSWORD
+        ports:
+        - containerPort: 8080
+
+

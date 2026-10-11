@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: adeeb-form-tls
+  namespace: adeeb
+spec:
+  dnsNames:
+   - adeeb-kubernetes.infra-x.cloud
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: praxis-form-letsencrypt-prod
+  secretName: adeeb-form-tls
+  usages:
+  - digital signature
+  - key encipherment
+
+ 
